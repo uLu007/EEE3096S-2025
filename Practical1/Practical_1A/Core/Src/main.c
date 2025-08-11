@@ -46,6 +46,10 @@ TIM_HandleTypeDef htim16;
 /* USER CODE BEGIN PV */
 // TODO: Define input variables
 
+uint8_t mode = 0; //0 = off
+uint8_t ledIndex = 0;
+uint8_t patternLED[8] = {0b00000001, 0b00000010, 0b00000100, 0b00001000, 0b00010000, 0b00100000, 0b01000000, 0b10000000};
+uint8_t timerMode = 0; //0 = default(1 second delay)
 
 /* USER CODE END PV */
 
@@ -55,6 +59,9 @@ static void MX_GPIO_Init(void);
 static void MX_TIM16_Init(void);
 /* USER CODE BEGIN PFP */
 void TIM16_IRQHandler(void);
+void basic(ledIndex);
+void sparkle(void);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -92,7 +99,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   // TODO: Start timer TIM16
-
+  HAL_TIM_Base_Start_IT(&htim16);
  
 
   /* USER CODE END 2 */
@@ -108,7 +115,46 @@ int main(void)
 
     // TODO: Check pushbuttons to change timer delay
 
+	if (HAL_GPIO_ReadPin(GPIOA, Button0_Pin) == GPIO_PIN_RESET /*&& ARRswitch*/){
+		if (timmerMode == 0){
+			timerMode= 1;
+			htim16.Instance -> ARR = TimerVals[timerMode]; // set arr to 0.5 sec
+		}
+		else{
+			timerMode = 0;
+			htim16.Instance -> ARR = TimerVals[timerMode]; // set arr to 1 sec
+		}
+		/*ARRswitch = 0;*/
+	}
 
+	if (HAL_GPIO_ReadPin(GPIOA, Button1_Pin) == GPIO_PIN_RESET){
+		if (!(mode == 1)){
+			mode = 1;
+			HAL_GPIO_WritePin(GPIOB, 0b11111111, GPIO_PIN_RESET); //LEDs off
+		}
+		else{
+			htim16.Instance -> CNT = htim16.Instance -> ARR; //force interrupt
+		}
+	}
+	if (HAL_GPIO_ReadPin(GPIOA, Button2_Pin) == GPIO_PIN_RESET){
+		if (!(mode == 2)){
+			mode = 2;
+			HAL_GPIO_WritePin(GPIOB, 0b11111111, GPIO_PIN_SET);	//LEDs on
+		}
+		else{
+			htim16.Instance -> CNT = htim16.Instance -> ARR; //force interrupt
+		}
+	}
+	if (HAL_GPIO_ReadPin(GPIOA, Button3_Pin) == GPIO_PIN_RESET){
+		if (!(mode == 3)){
+			mode = 3;
+			HAL_GPIO_WritePin(GPIOB, 0b11111111, GPIO_PIN_RESET); //LEDs off
+			htim16.Instance -> ARR = rand() % (1500 - 100 + 1)+ 100; //random delay
+		}
+		else{
+			htim16.Instance -> CNT = htim16.Instance -> ARR; //force interrupt
+		}
+	}
     
 
   }
@@ -322,9 +368,45 @@ void TIM16_IRQHandler(void)
 	HAL_TIM_IRQHandler(&htim16);
 
 	// TODO: Change LED pattern
+	switch (mode){
+	case 1:
+		ledIndex = 0;
+		basic(ledIndex);
+		break;
+	case 2:
+		ledIndex = 0;
+		basic(ledIndex);
+		break;
+	case 3:
+		sparkle();
+		break;
+	default:
+		break;
+	}
+}
 
+void basic(ledIndex){
+	if (ledIndex > 14){
+		ledIndex = 1;
+	}
+	if (ledIndex > 7){
+		HAL_GPIO_TogglePin(GPIOB, patternLED[7 - (ledIndex-8)]);
+		HAL_GPIO_TogglePin(GPIOB, patternLED[7 - (ledIndex-7)]);
+	}else if(ledIndex > 0){
+		HAL_GPIO_TogglePin(GPIOB, patternLED[ledIndex]);
+		HAL_GPIO_TogglePin(GPIOB, patternLED[ledIndex-1]);
+	}
+	ledIndex++;
+}
 
+void sparkle(){
+	HAL_GPIO_TogglePin(GPIOB, (rand()%(256)) ); //set random pins
 
+	for(uint8_t i=0; i<8; i++){
+		if (HAL_GPIO_ReadPin(GPIOB, ledPattern[i]) == GPIO_PIN_SET){
+			HAL_GPIO_TogglePin(GPIOB, ledPattern[i]);
+		}
+	}
 }
 
 
