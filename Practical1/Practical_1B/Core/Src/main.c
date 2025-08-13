@@ -29,7 +29,8 @@
 /* USER CODE BEGIN PTD */
 #define MAX_ITER 100
 /* USER CODE END PTD */
-
+#define SCALE_BITS 16
+#define SCALE (1 << SCALE_BITS)  // 65536
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
@@ -51,7 +52,12 @@
   checksum: should be uint64_t
   initial width and height maybe or you might opt for an array??
 */
+uint16_t test_image_sizes[] = { 128, 160, 192, 224, 256 };
+//variables profiling for execution time
+uint32_t start_time = 0;
+uint32_t end_time   = 0;
 
+uint32_t mandelbrot_checksum = 0;//to hole checksum returned
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -99,29 +105,33 @@ int main(void)
   MX_GPIO_Init();
   /* USER CODE BEGIN 2 */
   //TODO: Turn on LED 0 to signify the start of the operation
-  
+  LL_GPIO_ResetOutputPin(GPIOB, 0b11111111);  // Clear all pins on GPIOB
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);  // Set just pin 0 high
 
   //TODO: Record the start time
-  
+  start_time = HAL_GetTick(); // time in ms before
   
   //TODO: Call the Mandelbrot Function and store the output in the checksum variable defined initially
-  
-
+  for(int i =0; i<5; i++){
+  mandelbrot_checksum = calculate_mandelbrot_fixed_point_arithmetic(test_image_sizes[i], test_image_sizes[i],MAX_ITER);
+  }
   //TODO: Record the end time
   
-
+   end_time = HAL_GetTick(); // time in ms before
   //TODO: Calculate the execution time
   
-
+   uint32_t execution_time = end_time - start_time;
   //TODO: Turn on LED 1 to signify the end of the operation
-  
+   LL_GPIO_ResetOutputPin(GPIOB, 0b11111111);  // Clear all pins on GPIOB
+   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_SET);  // Set just pin 0 high
 
   //TODO: Hold the LEDs on for a 1s delay
-  
+   HAL_Delay(1000);
 
   //TODO: Turn off the LEDs
   
 
+   HAL_GPIO_WritePin(GPIOB, 0b11111111, GPIO_PIN_RESET);  // Set just pin 0 high
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -182,8 +192,8 @@ static void MX_GPIO_Init(void)
 /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOB_CLK_ENABLE();
-  __HAL_RCC_GPIOA_CLK_ENABLE();
+  _HAL_RCC_GPIOB_CLK_ENABLE();
+  _HAL_RCC_GPIOA_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0|GPIO_PIN_1, GPIO_PIN_RESET);
@@ -204,7 +214,38 @@ static void MX_GPIO_Init(void)
 uint64_t calculate_mandelbrot_fixed_point_arithmetic(int width, int height, int max_iterations){
   uint64_t mandelbrot_sum = 0;
     //TODO: Complete the function implementation
-    
+  for (int y = 0; y < height; y++) {
+          for (int x = 0; x < width; x++) {
+              // Scale x0 to [-2.5, 1.0] in fixed-point(converting float to fixed point)
+              int64_t x0 = ((x * 3 * SCALE) / width) - (5 * SCALE / 2);  // x0 = x/width * 3.5 - 2.5
+              // Scale y0 to [-1.0, 1.0] in fixed-point
+              int64_t y0 = ((y * 2 * SCALE) / height) - (1 * SCALE);     // y0 = y/height * 2.0 - 1.0
+
+              int64_t xi = 0, yi = 0;
+              int iteration = 0;
+
+              while (iteration < max_iterations) {
+                  // Compute xi² and yi² (fixed-point multiplication)
+                  int64_t xi_sq = (xi * xi) >> SCALE_BITS;
+                  int64_t yi_sq = (yi * yi) >> SCALE_BITS;
+
+                  // Check escape condition (xi² + yi² > 4.0 in fixed-point)
+                  if (xi_sq + yi_sq > (4 * SCALE)) {
+                      break;
+                  }
+
+                  // Compute new xi and yi (fixed-point arithmetic)
+                  int64_t temp = xi_sq - yi_sq;
+                  yi = ((2 * xi * yi) >> SCALE_BITS) + y0;
+                  xi = temp + x0;
+
+                  iteration++;
+              }
+
+              mandelbrot_sum += iteration;
+          }
+      }
+
     return mandelbrot_sum;
 
 }
@@ -214,6 +255,73 @@ uint64_t calculate_mandelbrot_double(int width, int height, int max_iterations){
     uint64_t mandelbrot_sum = 0;
     //TODO: Complete the function implementation
     
+    for (int y = 0; y < height; y++) {
+           for (int x = 0; x < width; x++) {
+               // Convert pixel coordinates to Mandelbrot coordinates (floating-point)
+               double x0 = (double)x / width * 3.5 - 2.5;  // x0 ∈ [-2.5, 1.0]
+               double y0 = (double)y / height * 2.0 - 1.0;  // y0 ∈ [-1.0, 1.0]
+
+               double xi = 0.0, yi = 0.0;
+               int iteration = 0;
+
+               while (iteration < max_iterations) {
+                   double xi_sq = xi * xi;
+                   double yi_sq = yi * yi;
+
+                   // Escape condition: xi² + yi² > 4.0
+                   if (xi_sq + yi_sq > 4.0) {
+                       break;
+                   }
+
+                   // Update zi = zi² + c (Mandelbrot formula)
+                   double temp = xi_sq - yi_sq;
+                   yi = 2 * xi * yi + y0;
+                   xi = temp + x0;
+
+                   iteration++;
+               }
+
+               mandelbrot_sum += iteration;
+           }
+       }
+
+    return mandelbrot_sum;
+}
+
+uint64_t calculate_mandelbrot_float(int width, int height, int max_iterations){
+    uint64_t mandelbrot_sum = 0;
+    //TODO: Complete the function implementation
+
+    for (int y = 0; y < height; y++) {
+           for (int x = 0; x < width; x++) {
+               // Convert pixel coordinates to Mandelbrot coordinates (floating-point)
+               float x0 = (float)x / width * 3.5 - 2.5;  // x0 ∈ [-2.5, 1.0]
+               float y0 = (float)y / height * 2.0 - 1.0;  // y0 ∈ [-1.0, 1.0]
+
+               float xi = 0.0, yi = 0.0;
+               int iteration = 0;
+
+               while (iteration < max_iterations) {
+                   float xi_sq = xi * xi;
+                   float yi_sq = yi * yi;
+
+                   // Escape condition: xi² + yi² > 4.0
+                   if (xi_sq + yi_sq > 4.0) {
+                       break;
+                   }
+
+                   // Update zi = zi² + c (Mandelbrot formula)
+                   float temp = xi_sq - yi_sq;
+                   yi = 2 * xi * yi + y0;
+                   xi = temp + x0;
+
+                   iteration++;
+               }
+
+               mandelbrot_sum += iteration;
+           }
+       }
+
     return mandelbrot_sum;
 }
 
