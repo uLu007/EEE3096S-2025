@@ -48,6 +48,7 @@ TIM_HandleTypeDef htim16;
 /* USER CODE BEGIN PV */
 // TODO: Define input variables
 
+uint8_t count = 0; //sparkle count
 uint8_t mode = 0; //0 = off
 uint8_t ledIndex = 0;
 uint8_t direction = 0;
@@ -103,7 +104,7 @@ int main(void)
 
   // TODO: Start timer TIM16
   HAL_TIM_Base_Start_IT(&htim16);
- 
+
 
   /* USER CODE END 2 */
 
@@ -111,7 +112,7 @@ int main(void)
   lcd_command(CLEAR);
   lcd_putstring ("START");
   //lcd_command(0xC0); // line2
-  //lcd_command(0x80); // line1
+  //lcd_command(0x80);Â //Â line1
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -141,9 +142,9 @@ int main(void)
 	if (HAL_GPIO_ReadPin(GPIOA, Button1_Pin) == GPIO_PIN_RESET){
 		//htim16.Instance -> CNT = htim16.Instance -> ARR;
 		LL_GPIO_ResetOutputPin(LED0_GPIO_Port, 0b11111111);
-		HAL_GPIO_WritePin(GPIOB, 0b00000000, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(GPIOB, 0b00000001, GPIO_PIN_SET);
 		mode = 1;
-		ledIndex = 2;
+		ledIndex = 0;
 		//htim16.Instance -> CNT = htim16.Instance -> ARR; // force the interrupt to happen immediately
 	}else if (HAL_GPIO_ReadPin(GPIOA, Button2_Pin) == GPIO_PIN_RESET){
 		//htim16.Instance -> CNT = htim16.Instance -> ARR;
@@ -157,11 +158,12 @@ int main(void)
 		HAL_GPIO_WritePin(GPIOB, (rand() % (255 + 1)), GPIO_PIN_SET);
 		mode = 3;
 		ledIndex = 0;
+		count = 0;
 		htim16.Instance -> ARR = rand() % (1500 - 100+1) + 100;
 		htim16.Instance -> CNT = htim16.Instance -> ARR; // force the interrupt to happen immediately
 	}
 
-    
+
 
   }
   /* USER CODE END 3 */
@@ -396,16 +398,16 @@ void TIM16_IRQHandler(void)
 
 void basic(){
 	if (direction==0){
-		/*HAL_GPIO_TogglePin(GPIOB, patternLED[ledIndex]);
-		HAL_GPIO_TogglePin(GPIOB, patternLED[ledIndex+1]);*/
+		HAL_GPIO_TogglePin(GPIOB, patternLED[ledIndex]);
+		HAL_GPIO_TogglePin(GPIOB, patternLED[ledIndex+1]);
 
-		GPIOB->ODR = PatternLED[ledIndex];
+		//GPIOB->ODR = patternLED[ledIndex];
 		ledIndex++;
 		if (ledIndex==7){direction=1;}
 	}else{
-		//HAL_GPIO_TogglePin(GPIOB, patternLED[ledIndex]);
-		//HAL_GPIO_TogglePin(GPIOB, patternLED[ledIndex-1]);
-		GPIOB->ODR = PatternLED[ledIndex];
+		HAL_GPIO_TogglePin(GPIOB, patternLED[ledIndex]);
+		HAL_GPIO_TogglePin(GPIOB, patternLED[ledIndex-1]);
+		//GPIOB->ODR = patternLED[ledIndex];
 		ledIndex--;
 		if (ledIndex==0){direction=0;}
 	}
@@ -418,8 +420,16 @@ void sparkle(){
 	//HAL_GPIO_WritePin(GPIOB, 0b11111111);
 	HAL_GPIO_WritePin(GPIOB, patternLED[ledIndex], GPIO_PIN_RESET);
 	ledIndex++;
-
-
+	count++;
+	//if(GPIOB->ODR == 0b00000000){
+	//	HAL_GPIO_WritePin(GPIOB, (rand() % (255 + 1)), GPIO_PIN_SET);
+	//}
+	if (count==9){
+		LL_GPIO_ResetOutputPin(LED0_GPIO_Port, 0b11111111);
+		HAL_GPIO_WritePin(GPIOB, (rand() % (255 + 1)), GPIO_PIN_SET);
+		count=0;
+		ledIndex=0;
+	}
 
 }
 
