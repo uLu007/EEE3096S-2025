@@ -145,6 +145,7 @@ int main(void)
 		HAL_GPIO_WritePin(GPIOB, 0b00000001, GPIO_PIN_SET);
 		mode = 1;
 		ledIndex = 0;
+		direction = 0;
 		//htim16.Instance -> CNT = htim16.Instance -> ARR; // force the interrupt to happen immediately
 	}else if (HAL_GPIO_ReadPin(GPIOA, Button2_Pin) == GPIO_PIN_RESET){
 		//htim16.Instance -> CNT = htim16.Instance -> ARR;
@@ -152,6 +153,7 @@ int main(void)
 		HAL_GPIO_WritePin(GPIOB, 0b11111110, GPIO_PIN_SET);
 		mode = 2;
 		ledIndex = 0;
+		direction = 0;
 		//htim16.Instance -> CNT = htim16.Instance -> ARR; // force the interrupt to happen immediately
 	}else if (HAL_GPIO_ReadPin(GPIOA, Button3_Pin) == GPIO_PIN_RESET){
 		LL_GPIO_ResetOutputPin(LED0_GPIO_Port, 0b11111111);
@@ -159,6 +161,7 @@ int main(void)
 		mode = 3;
 		ledIndex = 0;
 		count = 0;
+		//direction = 0;
 		htim16.Instance -> ARR = rand() % (1500 - 100+1) + 100;
 		htim16.Instance -> CNT = htim16.Instance -> ARR; // force the interrupt to happen immediately
 	}
