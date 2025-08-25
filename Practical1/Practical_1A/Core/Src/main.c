@@ -23,6 +23,8 @@
 /* USER CODE BEGIN Includes */
 #include <stdint.h>
 #include "stm32f0xx.h"
+#include <stdlib.h>
+#include <lcd_stm32f0.c>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -46,6 +48,12 @@ TIM_HandleTypeDef htim16;
 /* USER CODE BEGIN PV */
 // TODO: Define input variables
 
+uint8_t count = 0; //sparkle count
+uint8_t mode = 0; //0 = off
+uint8_t ledIndex = 0;
+uint8_t direction = 0;
+uint8_t patternLED[8] = {0b00000001, 0b00000010, 0b00000100, 0b00001000, 0b00010000, 0b00100000, 0b01000000, 0b10000000};
+uint8_t timerMode = 0; //0 = default(1 second delay)
 
 /* USER CODE END PV */
 
@@ -55,6 +63,9 @@ static void MX_GPIO_Init(void);
 static void MX_TIM16_Init(void);
 /* USER CODE BEGIN PFP */
 void TIM16_IRQHandler(void);
+void basic(void);
+void sparkle(void);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -92,10 +103,16 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   // TODO: Start timer TIM16
+  HAL_TIM_Base_Start_IT(&htim16);
 
- 
 
   /* USER CODE END 2 */
+
+  init_LCD();
+  lcd_command(CLEAR);
+  lcd_putstring ("START");
+  //lcd_command(0xC0); // line2
+  //lcd_command(0x80);Â //Â line1
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -107,9 +124,49 @@ int main(void)
     /* USER CODE BEGIN 3 */
 
     // TODO: Check pushbuttons to change timer delay
+	if (HAL_GPIO_ReadPin(GPIOA, Button0_Pin) == GPIO_PIN_RESET){
+		if (timerMode == 0){
+			timerMode= 1;
+			htim16.Instance -> ARR = 499; // set arr to 0.5 sec
+			/*lcd_command(CLEAR);
+			lcd_putstring ("Delay 0.5");*/
+		}
+		else{
+			timerMode = 0;
+			htim16.Instance -> ARR = 999; // set arr to 1 sec
+			/*lcd_command(CLEAR);
+			lcd_putstring ("Delay 1");*/
+		}
+	}
+	//LL_GPIO_ResetOutputPin(LED0_GPIO_PORT, 0b11111111);
+	if (HAL_GPIO_ReadPin(GPIOA, Button1_Pin) == GPIO_PIN_RESET){
+		//htim16.Instance -> CNT = htim16.Instance -> ARR;
+		LL_GPIO_ResetOutputPin(LED0_GPIO_Port, 0b11111111);
+		HAL_GPIO_WritePin(GPIOB, 0b00000001, GPIO_PIN_SET);
+		mode = 1;
+		ledIndex = 0;
+		direction = 0;
+		//htim16.Instance -> CNT = htim16.Instance -> ARR; // force the interrupt to happen immediately
+	}else if (HAL_GPIO_ReadPin(GPIOA, Button2_Pin) == GPIO_PIN_RESET){
+		//htim16.Instance -> CNT = htim16.Instance -> ARR;
+		LL_GPIO_ResetOutputPin(LED0_GPIO_Port, 0b11111111);
+		HAL_GPIO_WritePin(GPIOB, 0b11111110, GPIO_PIN_SET);
+		mode = 2;
+		ledIndex = 0;
+		direction = 0;
+		//htim16.Instance -> CNT = htim16.Instance -> ARR; // force the interrupt to happen immediately
+	}else if (HAL_GPIO_ReadPin(GPIOA, Button3_Pin) == GPIO_PIN_RESET){
+		LL_GPIO_ResetOutputPin(LED0_GPIO_Port, 0b11111111);
+		HAL_GPIO_WritePin(GPIOB, (rand() % (255 + 1)), GPIO_PIN_SET);
+		mode = 3;
+		ledIndex = 0;
+		count = 0;
+		//direction = 0;
+		htim16.Instance -> ARR = rand() % (1500 - 100+1) + 100;
+		htim16.Instance -> CNT = htim16.Instance -> ARR; // force the interrupt to happen immediately
+	}
 
 
-    
 
   }
   /* USER CODE END 3 */
@@ -322,11 +379,62 @@ void TIM16_IRQHandler(void)
 	HAL_TIM_IRQHandler(&htim16);
 
 	// TODO: Change LED pattern
-
-
+	switch (mode){
+		case 1:
+			lcd_command(CLEAR);
+			lcd_putstring ("Mode 1");
+			basic();
+			break;
+		case 2:
+			lcd_command(CLEAR);
+			lcd_putstring ("Mode 2");
+			basic();
+			break;
+		case 3:
+			sparkle();
+			break;
+		default:
+			break;
+	}
 
 }
 
+void basic(){
+	if (direction==0){
+		HAL_GPIO_TogglePin(GPIOB, patternLED[ledIndex]);
+		HAL_GPIO_TogglePin(GPIOB, patternLED[ledIndex+1]);
+
+		//GPIOB->ODR = patternLED[ledIndex];
+		ledIndex++;
+		if (ledIndex==7){direction=1;}
+	}else{
+		HAL_GPIO_TogglePin(GPIOB, patternLED[ledIndex]);
+		HAL_GPIO_TogglePin(GPIOB, patternLED[ledIndex-1]);
+		//GPIOB->ODR = patternLED[ledIndex];
+		ledIndex--;
+		if (ledIndex==0){direction=0;}
+	}
+
+}
+
+void sparkle(){
+	lcd_command(CLEAR);
+	lcd_putstring ("Sparkle");
+	//HAL_GPIO_WritePin(GPIOB, 0b11111111);
+	HAL_GPIO_WritePin(GPIOB, patternLED[ledIndex], GPIO_PIN_RESET);
+	ledIndex++;
+	count++;
+	//if(GPIOB->ODR == 0b00000000){
+	//	HAL_GPIO_WritePin(GPIOB, (rand() % (255 + 1)), GPIO_PIN_SET);
+	//}
+	if (count==9){
+		LL_GPIO_ResetOutputPin(LED0_GPIO_Port, 0b11111111);
+		HAL_GPIO_WritePin(GPIOB, (rand() % (255 + 1)), GPIO_PIN_SET);
+		count=0;
+		ledIndex=0;
+	}
+
+}
 
 /* USER CODE END 4 */
 
