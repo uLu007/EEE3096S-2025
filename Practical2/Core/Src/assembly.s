@@ -35,6 +35,24 @@ ASM_Main:
 @ TODO: Add code, labels and logic for button checks and LED patterns
 
 main_loop:
+	LDR R3, [R0, #0x10]		@ read GPIOA IDR (button presses)
+
+
+normal:
+	LSRS R4, R3, #0 		@check sw0
+	BSC inc_by_1
+	ADDS R2, R2, #2
+	B delay
+
+inc_by_1:
+	ADDS R2, R2, #1
+
+delay:
+	LSRS R4, R3, #1			@check sw1
+	BSC long_delay
+	BL short_delay
+	B write_leds
+
 
 
 write_leds:
