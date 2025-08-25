@@ -37,24 +37,48 @@ ASM_Main:
 main_loop:
 	LDR R3, [R0, #0x10]		@ read GPIOA IDR (button presses)
 
+check_sw2:
+	LSRS R4, R3, #2			@check sw2
+	BSC check_sw3			@skip if not pressed
+	MOVS R2, #0xAA
+	B write_leds
+
+check_sw3:
+	LSRS R4, R3, #3 		@check sw3
+	BSC normal				@skip if not pressed
+	B write_leds
 
 normal:
 	LSRS R4, R3, #0 		@check sw0
-	BSC inc_by_1
-	ADDS R2, R2, #2
+	BSC inc_by_1			@if not pressed, inc by 1
+	ADDS R2, R2, #2			@else increase by 2
 	B delay
 
 inc_by_1:
 	ADDS R2, R2, #1
 
+@============DELAYS
 delay:
 	LSRS R4, R3, #1			@check sw1
-	BSC long_delay
-	BL short_delay
+	BSC long_delay			@if not pressed, use long delay
+	BL short_delay			@else use short
 	B write_leds
 
+long_delay:
+	LDR R5, LONG_DELAY_CNT
+long_loop:
+	SUBS R5, R5, #1
+	BNE long_loop
+	BX LR
 
+short_delay:
+	LDR R5, SHORT_DELAY_CNT
+short_loop:
+	SUBS R5, R5, #1
+	BNE short_loop
+	BX LR
 
+@============WRITE LEDS
 write_leds:
 	STR R2, [R1, #0x14]
 	B main_loop
@@ -68,5 +92,5 @@ GPIOB_BASE:  		.word 0x48000400
 MODER_OUTPUT: 		.word 0x5555
 
 @ TODO: Add your own values for these delays
-LONG_DELAY_CNT: 	.word 0
-SHORT_DELAY_CNT: 	.word 0
+LONG_DELAY_CNT: 	.word 2800000
+SHORT_DELAY_CNT: 	.word 1200000
