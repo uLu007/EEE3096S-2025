@@ -35,38 +35,38 @@ ASM_Main:
 @ TODO: Add code, labels and logic for button checks and LED patterns
 	MOVS R7, #0 	@LED bitmask
 	LDR R6, LONG_DELAY_CNT
-	LDR R5, SORT_DELAY_CNT
+	LDR R5, SHORT_DELAY_CNT
 
 main_loop:
-	LDR R3, GPIOA_BASE		@ read GPIOA IDR (button presses)
-	LDR R6, [R0, #0x10]		@GPIOA -> IDR
+	LDR R0, GPIOA_BASE		@ read GPIOA IDR (button presses)
+	LDR R1, [R0, #0x10]		@GPIOA -> IDR
 
 @========check button presses=========
-check_sw2:	@check switch 2
+@check switch 2
 	LDR R4, sw2
 	TST R1, R4
 	BEQ fixed_pattern
 
-check_sw3:	@check switch 3
+@check switch 3
 	LDR R4, sw3
 	TST R1, R4
 	BEQ freeze
 
-check_sw0:	@check switch 0
+@check switch 0
 	LDR R4, sw0
 	TST R1, R4
 	BEQ inc_by_2
 
-check_sw1:	@check switch 1
+@check switch 1
 	LDR R4, sw1
 	TST R1, R4
 	BEQ short
 
-check_sw0_and_sw1: 	@check switch 0 and 1
+@check switch 0 and 1
 	LDR R4, sw0_sw1
 	TST R1, R4
 	BEQ sw0_and_sw1
-===========================
+@===========================
 
 	CMP R6, #0 				@initiate delay
 	BNE long_delay
@@ -130,7 +130,7 @@ write_leds:
 reset_bit:
 	MOVS R3, #0
 	MOVS R4, #0
-	MOVES R2, R3
+	MOVS R2, R3
 	B write_leds
 
 @=====DELAYS
