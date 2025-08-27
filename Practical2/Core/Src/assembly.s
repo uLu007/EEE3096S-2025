@@ -52,6 +52,11 @@ main_loop:
 	TST R1, R4
 	BEQ freeze
 
+@check switch 0 and 1
+	LDR R4, sw0_sw1
+	TST R1, R4
+	BEQ sw0_and_sw1
+
 @check switch 0
 	LDR R4, sw0
 	TST R1, R4
@@ -62,10 +67,6 @@ main_loop:
 	TST R1, R4
 	BEQ short
 
-@check switch 0 and 1
-	LDR R4, sw0_sw1
-	TST R1, R4
-	BEQ sw0_and_sw1
 @===========================
 
 	CMP R6, #0 				@initiate delay
